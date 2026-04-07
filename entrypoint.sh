@@ -36,20 +36,28 @@ else
     echo "[INFO] SuiteCRM ${INSTALLED} ist bereits installiert."
 fi
 
-# ── Berechtigungen ──────────────────────────────────────────
-echo "[INFO] Setze Berechtigungen..."
-chown -R www-data:www-data "${SUITECRM_DIR}"
-find "${SUITECRM_DIR}" -type d -exec chmod 755 {} \;
-find "${SUITECRM_DIR}" -type f -exec chmod 644 {} \;
+# ── Berechtigungen (nur beim ersten Start) ──────────────────
+PERMISSIONS_FLAG="${SUITECRM_DIR}/.permissions_set"
+if [ ! -f "${PERMISSIONS_FLAG}" ]; then
+    echo "[INFO] Setze Berechtigungen..."
+    chown -R www-data:www-data "${SUITECRM_DIR}"
+    find "${SUITECRM_DIR}" -type d -exec chmod 755 {} \;
+    find "${SUITECRM_DIR}" -type f -exec chmod 644 {} \;
 
-# Schreibrechte für SuiteCRM-Verzeichnisse
-for DIR in \
-    "cache" "custom" "modules" "themes" "data" "upload" "logs" \
-    "public/legacy/cache" "public/legacy/custom" "public/legacy/modules" \
-    "public/legacy/themes" "public/legacy/data" "public/legacy/upload" \
-    "public/legacy/logs"; do
-    [ -d "${SUITECRM_DIR}/${DIR}" ] && chmod -R 775 "${SUITECRM_DIR}/${DIR}"
-done
+    # Schreibrechte für SuiteCRM-Verzeichnisse
+    for DIR in \
+        "cache" "custom" "modules" "themes" "data" "upload" "logs" \
+        "public/legacy/cache" "public/legacy/custom" "public/legacy/modules" \
+        "public/legacy/themes" "public/legacy/data" "public/legacy/upload" \
+        "public/legacy/logs"; do
+        [ -d "${SUITECRM_DIR}/${DIR}" ] && chmod -R 775 "${SUITECRM_DIR}/${DIR}"
+    done
+
+    echo "1" > "${PERMISSIONS_FLAG}"
+    echo "[INFO] Berechtigungen gesetzt."
+else
+    echo "[INFO] Berechtigungen bereits gesetzt, überspringe..."
+fi
 
 # ── OAuth2 API-Keys generieren ──────────────────────────────
 OAUTH_DIR="${SUITECRM_DIR}/public/legacy/Api/V8/OAuth2"
