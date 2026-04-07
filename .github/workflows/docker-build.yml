@@ -1,0 +1,93 @@
+name: Docker Image bauen & pushen
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Nur neu bauen wenn sich relevante Dateien ändern
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'conf/**'
+      - '.github/workflows/docker-build.yml'
+  # Manuell auslösen (z.B. für neue SuiteCRM-Version)
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: 1899nils/kw-suitecrm
+
+jobs:
+  build-and-push:
+    name: Image bauen und pushen
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # Nötig um auf ghcr.io zu pushen
+
+    steps:
+      # ── Repo auschecken ──────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── SuiteCRM Version aus Dockerfile auslesen ─────────
+      - name: SuiteCRM Version ermitteln
+        id: version
+        run: |
+          VERSION=$(grep 'ARG SUITECRM_VERSION=' Dockerfile | cut -d'=' -f2)
+          echo "suitecrm_version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Baue für SuiteCRM Version: ${VERSION}"
+
+      # ── Docker Buildx einrichten ─────────────────────────
+      - name: Docker Buildx einrichten
+        uses: docker/setup-buildx-action@v3
+
+      # ── Bei GitHub Container Registry anmelden ───────────
+      - name: Login zu ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Image Tags festlegen ─────────────────────────────
+      - name: Image Metadaten/Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # :latest immer beim Push auf main
+            type=raw,value=latest
+            # :8.7.1 (die SuiteCRM-Version als Tag)
+            type=raw,value=${{ steps.version.outputs.suitecrm_version }}
+            # :sha-abc1234 (Git Commit Hash, für Rollbacks)
+            type=sha,prefix=sha-,format=short
+
+      # ── Image bauen und pushen ───────────────────────────
+      - name: Bauen und pushen
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SUITECRM_VERSION=${{ steps.version.outputs.suitecrm_version }}
+          # Cache nutzen für schnellere Builds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Zusammenfassung ──────────────────────────────────
+      - name: Build-Zusammenfassung
+        run: |
+          echo "## ✅ Image erfolgreich gebaut" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**SuiteCRM Version:** ${{ steps.version.outputs.suitecrm_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`ghcr.io/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Auf Unraid ziehen mit:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "docker compose pull && docker compose up -d" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

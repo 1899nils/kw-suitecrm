@@ -1,0 +1,51 @@
+services:
+
+  # ==========================================
+  # MariaDB Datenbank
+  # ==========================================
+  mariadb:
+    image: mariadb:11
+    container_name: suitecrm-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_CHARACTER_SET: utf8mb4
+      MARIADB_COLLATE: utf8mb4_unicode_ci
+    volumes:
+      - /mnt/user/appdata/suitecrm/db:/var/lib/mysql
+    networks:
+      - suitecrm-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ==========================================
+  # SuiteCRM – Image von GitHub Actions gebaut
+  # ==========================================
+  suitecrm:
+    # Fertig gebautes Image von ghcr.io (kein lokales Bauen nötig!)
+    image: ghcr.io/1899nils/kw-suitecrm:latest
+    container_name: suitecrm
+    restart: unless-stopped
+    ports:
+      - "${SUITECRM_PORT}:80"
+    volumes:
+      - /mnt/user/appdata/suitecrm/app:/var/www/html
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - suitecrm-net
+    environment:
+      TZ: Europe/Berlin
+
+networks:
+  suitecrm-net:
+    name: suitecrm-network
+    driver: bridge

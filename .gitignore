@@ -1,0 +1,9 @@
+# Passwörter niemals committen!
+.env
+
+# MacOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
