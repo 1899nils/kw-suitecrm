@@ -1,6 +1,6 @@
 # kw-suitecrm
 
-SuiteCRM 8 – selbst gehostet auf Unraid via Docker.  
+SuiteCRM 8 – selbst gehostet auf Unraid via Docker.
 Image wird automatisch per GitHub Actions gebaut und auf `ghcr.io` veröffentlicht.
 
 ## Stack
@@ -12,56 +12,30 @@ Image wird automatisch per GitHub Actions gebaut und auf `ghcr.io` veröffentlic
 | Apache     | 2.4     |
 | MariaDB    | 11      |
 
-## SuiteCRM updaten
+## Installation
 
-1. In `Dockerfile` die Zeile `ARG SUITECRM_VERSION=8.7.1` auf die neue Version ändern
-2. Commit & Push auf `main`
-3. GitHub Actions baut automatisch ein neues Image
-4. Auf Unraid: `docker compose pull && docker compose up -d`
+Vollständige Anleitung: [SETUP-ANLEITUNG.md](SETUP-ANLEITUNG.md)
 
-## Unraid Setup
+**Kurzfassung:**
+1. GitHub Actions baut das Image automatisch nach einem Push auf `main`
+2. In Unraid zwei Container anlegen: `mariadb:11` + `ghcr.io/1899nils/kw-suitecrm:latest`
+3. Browser öffnen → Installations-Assistent folgen
 
-### 1. Repo klonen (einmalig)
-```bash
-cd /mnt/user/appdata
-git clone https://github.com/1899nils/kw-suitecrm.git
-cd kw-suitecrm
-```
+## Container Konfiguration
 
-### 2. `.env` anlegen
-```bash
-cp .env.example .env
-nano .env   # Passwörter anpassen!
-```
+### SuiteCRM
+| Einstellung | Wert |
+|-------------|------|
+| Image | `ghcr.io/1899nils/kw-suitecrm:latest` |
+| Port | `8080 → 80` |
+| Volume | `/mnt/user/appdata/suitecrm/app → /var/www/html` |
+| Variable | `TZ=Europe/Berlin` |
 
-### 3. Starten
-```bash
-docker compose pull
-docker compose up -d
-```
-
-### 4. Installation abschließen
-Browser öffnen: `http://<UNRAID-IP>:8080`
-
-> **DB-Host beim Installer:** `mariadb`
-
-## Nützliche Befehle
-
-```bash
-# Logs anzeigen
-docker logs -f suitecrm
-
-# Update auf neue Image-Version
-docker compose pull && docker compose up -d
-
-# Backup der Datenbank
-docker exec suitecrm-db sh -c \
-  'mysqldump -u root -p"$MARIADB_ROOT_PASSWORD" suitecrm' \
-  > backup_$(date +%Y%m%d).sql
-
-# Neu einloggen in Container
-docker exec -it suitecrm bash
-```
+### MariaDB
+| Einstellung | Wert |
+|-------------|------|
+| Image | `mariadb:11` |
+| Volume | `/mnt/user/appdata/suitecrm/db → /var/lib/mysql` |
 
 ## Daten auf Unraid
 
@@ -70,3 +44,9 @@ docker exec -it suitecrm bash
 ├── app/   → SuiteCRM Dateien & Uploads
 └── db/    → MariaDB Datenbank
 ```
+
+## SuiteCRM updaten
+
+1. In `Dockerfile` die Version ändern: `ARG SUITECRM_VERSION=8.x.x`
+2. Commit & Push auf `main` → GitHub Actions baut neues Image
+3. Unraid → Docker → Container updaten
