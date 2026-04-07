@@ -3,6 +3,7 @@ set -e
 
 SUITECRM_DIR="/var/www/html"
 VERSION_FILE="${SUITECRM_DIR}/.suitecrm_version"
+INSTALL_FLAG="${SUITECRM_DIR}/.suitecrm_installed"
 DOWNLOAD_URL="https://github.com/salesagility/SuiteCRM-Core/releases/download/v${SUITECRM_VERSION}/SuiteCRM-${SUITECRM_VERSION}.zip"
 
 echo "============================================="
@@ -59,6 +60,42 @@ else
     echo "[INFO] Berechtigungen bereits gesetzt, überspringe..."
 fi
 
+# ── Automatische Installation (wenn Env-Vars gesetzt) ────────
+if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
+    DB_HOST="${DB_HOST:-suitecrm-db}"
+    DB_PORT="${DB_PORT:-3306}"
+    DB_NAME="${DB_NAME:-suitecrm}"
+    ADMIN_USER="${ADMIN_USER:-admin}"
+    SITE_URL="${SITE_URL:-http://localhost}"
+
+    echo "[INFO] Warte auf Datenbank (${DB_HOST}:${DB_PORT})..."
+    until php -r "new PDO('mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_NAME}', '${DB_USER}', '${DB_PASSWORD}');" 2>/dev/null; do
+        echo "[INFO] Datenbank noch nicht bereit – warte 5 Sekunden..."
+        sleep 5
+    done
+    echo "[INFO] Datenbank bereit."
+
+    echo "[INFO] Starte automatische SuiteCRM Installation..."
+    cd "${SUITECRM_DIR}" && php bin/console suitecrm:app:install \
+        --db-host="${DB_HOST}" \
+        --db-port="${DB_PORT}" \
+        --db-user="${DB_USER}" \
+        --db-pass="${DB_PASSWORD}" \
+        --db-name="${DB_NAME}" \
+        --site-url="${SITE_URL}" \
+        -u "${ADMIN_USER}" \
+        -p "${ADMIN_PASSWORD}" \
+        --sys-check-del \
+        -n
+
+    echo "installed" > "${INSTALL_FLAG}"
+    echo "[INFO] Installation abgeschlossen."
+elif [ -f "${INSTALL_FLAG}" ]; then
+    echo "[INFO] SuiteCRM bereits installiert, überspringe Installation."
+else
+    echo "[INFO] Keine DB/Admin Env-Vars gesetzt – bitte Web-Installer unter http://<IP>:8080 nutzen."
+fi
+
 # ── OAuth2 API-Keys generieren ──────────────────────────────
 OAUTH_DIR="${SUITECRM_DIR}/public/legacy/Api/V8/OAuth2"
 if [ -d "${OAUTH_DIR}" ] && [ ! -f "${OAUTH_DIR}/private.key" ]; then
@@ -77,8 +114,7 @@ chmod 0644 /etc/cron.d/suitecrm
 cron
 
 echo "[INFO] ============================================="
-echo "[INFO] Bereit! Öffne http://<UNRAID-IP>:8080"
-echo "[INFO] DB-Host beim Installer: mariadb"
+echo "[INFO] Bereit! Öffne http://<UNRAID-IP>:${SITE_URL##*:}"
 echo "[INFO] ============================================="
 
 exec "$@"

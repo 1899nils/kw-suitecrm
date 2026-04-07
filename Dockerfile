@@ -14,6 +14,20 @@ ARG SUITECRM_VERSION
 ENV SUITECRM_VERSION=${SUITECRM_VERSION}
 ENV TZ=Europe/Berlin
 
+# Datenbank (werden beim Container-Start gesetzt)
+ENV DB_HOST=suitecrm-db
+ENV DB_PORT=3306
+ENV DB_NAME=suitecrm
+ENV DB_USER=
+ENV DB_PASSWORD=
+
+# Admin-Account
+ENV ADMIN_USER=admin
+ENV ADMIN_PASSWORD=
+
+# SuiteCRM URL (z.B. http://192.168.1.100:8080)
+ENV SITE_URL=http://localhost
+
 LABEL org.opencontainers.image.source="https://github.com/1899nils/kw-suitecrm"
 LABEL org.opencontainers.image.description="SuiteCRM ${SUITECRM_VERSION} auf PHP 8.2 Apache"
 LABEL org.opencontainers.image.licenses="AGPL-3.0"
