@@ -92,14 +92,15 @@ RUN curl -fsSL \
     "https://github.com/salesagility/SuiteCRM-Core/releases/download/v${SUITECRM_VERSION}/SuiteCRM-${SUITECRM_VERSION}.zip" \
     -o /tmp/suitecrm.zip \
     && unzip -q /tmp/suitecrm.zip -d /tmp/suitecrm_extract \
-    && EXTRACTED=$(find /tmp/suitecrm_extract -maxdepth 1 -mindepth 1 -type d | head -1) \
     && mkdir -p /opt/suitecrm-source \
-    && if [ -n "$EXTRACTED" ]; then \
-         cp -r "${EXTRACTED}/." /opt/suitecrm-source/; \
-       else \
+    && if [ -f "/tmp/suitecrm_extract/bin/console" ]; then \
          cp -r /tmp/suitecrm_extract/. /opt/suitecrm-source/; \
+       else \
+         SUBDIR=$(find /tmp/suitecrm_extract -maxdepth 2 -name "console" -path "*/bin/console" | head -1 | sed 's|/bin/console||'); \
+         cp -r "${SUBDIR}/." /opt/suitecrm-source/; \
        fi \
-    && rm -rf /tmp/suitecrm.zip /tmp/suitecrm_extract
+    && rm -rf /tmp/suitecrm.zip /tmp/suitecrm_extract \
+    && test -f /opt/suitecrm-source/bin/console || (echo "ERROR: bin/console nicht gefunden!" && exit 1)
 
 # Entrypoint
 COPY entrypoint.sh /entrypoint.sh
