@@ -1,41 +1,13 @@
 #!/bin/bash
-set -eo pipefail
+set -e
 
 SUITECRM_DIR="/var/www/html"
-VERSION_FILE="${SUITECRM_DIR}/.suitecrm_version"
 INSTALL_FLAG="${SUITECRM_DIR}/.suitecrm_installed"
-DOWNLOAD_URL="https://github.com/salesagility/SuiteCRM-Core/releases/download/v${SUITECRM_VERSION}/SuiteCRM-${SUITECRM_VERSION}.zip"
 
 echo "============================================="
 echo " SuiteCRM Docker – kw-suitecrm"
 echo " Version: ${SUITECRM_VERSION}"
 echo "============================================="
-
-# ── SuiteCRM herunterladen (nur beim ersten Start) ──────────
-if [ ! -f "${VERSION_FILE}" ]; then
-    echo "[INFO] Erster Start – lade SuiteCRM ${SUITECRM_VERSION} herunter..."
-    echo "[INFO] ${DOWNLOAD_URL}"
-
-    curl -L --progress-bar "${DOWNLOAD_URL}" -o /tmp/suitecrm.zip
-
-    echo "[INFO] Entpacke Archiv..."
-    unzip -q /tmp/suitecrm.zip -d /tmp/suitecrm_extract
-
-    # GitHub packt manchmal in Unterordner
-    EXTRACTED=$(find /tmp/suitecrm_extract -maxdepth 1 -mindepth 1 -type d | head -1)
-    if [ -n "$EXTRACTED" ]; then
-        cp -r "${EXTRACTED}/." "${SUITECRM_DIR}/"
-    else
-        cp -r /tmp/suitecrm_extract/. "${SUITECRM_DIR}/"
-    fi
-
-    rm -rf /tmp/suitecrm.zip /tmp/suitecrm_extract
-    echo "${SUITECRM_VERSION}" > "${VERSION_FILE}"
-    echo "[INFO] Download abgeschlossen."
-else
-    INSTALLED=$(cat "${VERSION_FILE}")
-    echo "[INFO] SuiteCRM ${INSTALLED} ist bereits installiert."
-fi
 
 # ── Berechtigungen (nur beim ersten Start) ──────────────────
 PERMISSIONS_FLAG="${SUITECRM_DIR}/.permissions_set"
@@ -45,7 +17,6 @@ if [ ! -f "${PERMISSIONS_FLAG}" ]; then
     find "${SUITECRM_DIR}" -type d -exec chmod 755 {} \;
     find "${SUITECRM_DIR}" -type f -exec chmod 644 {} \;
 
-    # Schreibrechte für SuiteCRM-Verzeichnisse
     for DIR in \
         "cache" "custom" "modules" "themes" "data" "upload" "logs" \
         "public/legacy/cache" "public/legacy/custom" "public/legacy/modules" \
@@ -76,26 +47,21 @@ if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] 
     echo "[INFO] Datenbank bereit."
 
     echo "[INFO] Starte automatische SuiteCRM Installation..."
-    if [ ! -f "${SUITECRM_DIR}/bin/console" ]; then
-        echo "[ERROR] bin/console nicht gefunden unter ${SUITECRM_DIR}/bin/console"
-        echo "[ERROR] Verfügbare Dateien:"
-        ls "${SUITECRM_DIR}/" | head -20
-    else
-        php "${SUITECRM_DIR}/bin/console" suitecrm:app:install \
-            --db-host="${DB_HOST}" \
-            --db-port="${DB_PORT}" \
-            --db-user="${DB_USER}" \
-            --db-pass="${DB_PASSWORD}" \
-            --db-name="${DB_NAME}" \
-            --site-url="${SITE_URL}" \
-            -u "${ADMIN_USER}" \
-            -p "${ADMIN_PASSWORD}" \
-            --sys-check-del \
-            -n \
-            && echo "installed" > "${INSTALL_FLAG}" \
-            && echo "[INFO] Installation abgeschlossen." \
-            || echo "[WARN] Installation fehlgeschlagen – Apache startet trotzdem, prüfe die Logs"
-    fi
+    php "${SUITECRM_DIR}/bin/console" suitecrm:app:install \
+        --db-host="${DB_HOST}" \
+        --db-port="${DB_PORT}" \
+        --db-user="${DB_USER}" \
+        --db-pass="${DB_PASSWORD}" \
+        --db-name="${DB_NAME}" \
+        --site-url="${SITE_URL}" \
+        -u "${ADMIN_USER}" \
+        -p "${ADMIN_PASSWORD}" \
+        --sys-check-del \
+        -n \
+        && echo "installed" > "${INSTALL_FLAG}" \
+        && echo "[INFO] Installation abgeschlossen." \
+        || echo "[WARN] Installation fehlgeschlagen – prüfe die Logs"
+
 elif [ -f "${INSTALL_FLAG}" ]; then
     echo "[INFO] SuiteCRM bereits installiert, überspringe Installation."
 else
@@ -120,7 +86,7 @@ chmod 0644 /etc/cron.d/suitecrm
 cron
 
 echo "[INFO] ============================================="
-echo "[INFO] Bereit! Öffne http://<UNRAID-IP>:${SITE_URL##*:}"
+echo "[INFO] Bereit! Öffne ${SITE_URL}"
 echo "[INFO] ============================================="
 
 exec "$@"
