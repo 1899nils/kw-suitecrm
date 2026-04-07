@@ -38,15 +38,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libonig-dev \
     libgmp-dev \
     libldap2-dev \
-    libc-client-dev \
-    libkrb5-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # PHP Extensions
-RUN docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo_mysql \
         mysqli \
@@ -60,7 +57,6 @@ RUN docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
         gmp \
         opcache \
         soap \
-        imap \
         ldap \
         bcmath \
         exif
