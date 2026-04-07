@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 SUITECRM_DIR="/var/www/html"
 SUITECRM_SOURCE="/opt/suitecrm-source"
