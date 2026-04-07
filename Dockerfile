@@ -87,16 +87,17 @@ COPY conf/apache/security.conf   /etc/apache2/conf-available/suitecrm-security.c
 RUN a2enconf suitecrm-security
 COPY conf/php/suitecrm.ini       /usr/local/etc/php/conf.d/suitecrm.ini
 
-# SuiteCRM herunterladen und ins Image einbauen
+# SuiteCRM herunterladen – in /opt/suitecrm-source (nicht im Volume!)
 RUN curl -fsSL \
     "https://github.com/salesagility/SuiteCRM-Core/releases/download/v${SUITECRM_VERSION}/SuiteCRM-${SUITECRM_VERSION}.zip" \
     -o /tmp/suitecrm.zip \
     && unzip -q /tmp/suitecrm.zip -d /tmp/suitecrm_extract \
     && EXTRACTED=$(find /tmp/suitecrm_extract -maxdepth 1 -mindepth 1 -type d | head -1) \
+    && mkdir -p /opt/suitecrm-source \
     && if [ -n "$EXTRACTED" ]; then \
-         cp -r "${EXTRACTED}/." /var/www/html/; \
+         cp -r "${EXTRACTED}/." /opt/suitecrm-source/; \
        else \
-         cp -r /tmp/suitecrm_extract/. /var/www/html/; \
+         cp -r /tmp/suitecrm_extract/. /opt/suitecrm-source/; \
        fi \
     && rm -rf /tmp/suitecrm.zip /tmp/suitecrm_extract
 

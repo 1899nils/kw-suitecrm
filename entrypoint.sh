@@ -2,12 +2,20 @@
 set -e
 
 SUITECRM_DIR="/var/www/html"
+SUITECRM_SOURCE="/opt/suitecrm-source"
 INSTALL_FLAG="${SUITECRM_DIR}/.suitecrm_installed"
 
 echo "============================================="
 echo " SuiteCRM Docker – kw-suitecrm"
 echo " Version: ${SUITECRM_VERSION}"
 echo "============================================="
+
+# ── Dateien ins Volume kopieren (nur beim ersten Start) ──────
+if [ ! -f "${SUITECRM_DIR}/bin/console" ]; then
+    echo "[INFO] Kopiere SuiteCRM Dateien ins Volume..."
+    cp -r "${SUITECRM_SOURCE}/." "${SUITECRM_DIR}/"
+    echo "[INFO] Kopieren abgeschlossen."
+fi
 
 # ── Berechtigungen (nur beim ersten Start) ──────────────────
 PERMISSIONS_FLAG="${SUITECRM_DIR}/.permissions_set"
