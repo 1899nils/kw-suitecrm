@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 SUITECRM_DIR="/var/www/html"
 VERSION_FILE="${SUITECRM_DIR}/.suitecrm_version"
@@ -76,20 +76,26 @@ if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] 
     echo "[INFO] Datenbank bereit."
 
     echo "[INFO] Starte automatische SuiteCRM Installation..."
-    cd "${SUITECRM_DIR}" && php bin/console suitecrm:app:install \
-        --db-host="${DB_HOST}" \
-        --db-port="${DB_PORT}" \
-        --db-user="${DB_USER}" \
-        --db-pass="${DB_PASSWORD}" \
-        --db-name="${DB_NAME}" \
-        --site-url="${SITE_URL}" \
-        -u "${ADMIN_USER}" \
-        -p "${ADMIN_PASSWORD}" \
-        --sys-check-del \
-        -n
-
-    echo "installed" > "${INSTALL_FLAG}"
-    echo "[INFO] Installation abgeschlossen."
+    if [ ! -f "${SUITECRM_DIR}/bin/console" ]; then
+        echo "[ERROR] bin/console nicht gefunden unter ${SUITECRM_DIR}/bin/console"
+        echo "[ERROR] Verfügbare Dateien:"
+        ls "${SUITECRM_DIR}/" | head -20
+    else
+        php "${SUITECRM_DIR}/bin/console" suitecrm:app:install \
+            --db-host="${DB_HOST}" \
+            --db-port="${DB_PORT}" \
+            --db-user="${DB_USER}" \
+            --db-pass="${DB_PASSWORD}" \
+            --db-name="${DB_NAME}" \
+            --site-url="${SITE_URL}" \
+            -u "${ADMIN_USER}" \
+            -p "${ADMIN_PASSWORD}" \
+            --sys-check-del \
+            -n \
+            && echo "installed" > "${INSTALL_FLAG}" \
+            && echo "[INFO] Installation abgeschlossen." \
+            || echo "[WARN] Installation fehlgeschlagen – Apache startet trotzdem, prüfe die Logs"
+    fi
 elif [ -f "${INSTALL_FLAG}" ]; then
     echo "[INFO] SuiteCRM bereits installiert, überspringe Installation."
 else
