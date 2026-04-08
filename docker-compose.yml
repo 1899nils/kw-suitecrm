@@ -1,17 +1,23 @@
+# ============================================================
+# Referenz-Compose-Datei
+# ------------------------------------------------------------
+# Auf Unraid werden die beiden Container direkt ueber die
+# Docker-UI angelegt. Alle Variablen werden dort gesetzt.
+# Diese Datei dient nur als Dokumentation / lokaler Testlauf.
+# ============================================================
+
 services:
 
-  # ==========================================
-  # MariaDB Datenbank
-  # ==========================================
   mariadb:
     image: mariadb:11
     container_name: suitecrm-db
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${MARIADB_USER}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      # >>> In Unraid-Container-UI setzen <<<
+      MARIADB_ROOT_PASSWORD: changeme_root
+      MARIADB_DATABASE: suitecrm
+      MARIADB_USER: suitecrm_user
+      MARIADB_PASSWORD: changeme_db
       MARIADB_CHARACTER_SET: utf8mb4
       MARIADB_COLLATE: utf8mb4_unicode_ci
     volumes:
@@ -25,16 +31,12 @@ services:
       retries: 10
       start_period: 30s
 
-  # ==========================================
-  # SuiteCRM – Image von GitHub Actions gebaut
-  # ==========================================
   suitecrm:
-    # Fertig gebautes Image von ghcr.io (kein lokales Bauen nötig!)
     image: ghcr.io/1899nils/kw-suitecrm:latest
     container_name: suitecrm
     restart: unless-stopped
     ports:
-      - "${SUITECRM_PORT}:80"
+      - "8080:80"
     volumes:
       - /mnt/user/appdata/suitecrm/app:/var/www/html
     depends_on:
@@ -43,15 +45,16 @@ services:
     networks:
       - suitecrm-net
     environment:
+      # >>> In Unraid-Container-UI setzen <<<
       TZ: Europe/Berlin
       DB_HOST: suitecrm-db
       DB_PORT: 3306
-      DB_NAME: ${MARIADB_DATABASE}
-      DB_USER: ${MARIADB_USER}
-      DB_PASSWORD: ${MARIADB_PASSWORD}
-      ADMIN_USER: ${ADMIN_USER}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      SITE_URL: ${SITE_URL}
+      DB_NAME: suitecrm
+      DB_USER: suitecrm_user
+      DB_PASSWORD: changeme_db
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: changeme_admin
+      SITE_URL: http://192.168.1.100:8080
 
 networks:
   suitecrm-net:
