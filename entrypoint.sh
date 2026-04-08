@@ -55,15 +55,14 @@ if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] 
 
     echo "[INFO] Starte automatische SuiteCRM Installation..."
     php "${SUITECRM_DIR}/bin/console" suitecrm:app:install \
-        --db-host="${DB_HOST}" \
-        --db-port="${DB_PORT}" \
-        --db-user="${DB_USER}" \
-        --db-pass="${DB_PASSWORD}" \
-        --db-name="${DB_NAME}" \
-        --site-url="${SITE_URL}" \
-        -u "${ADMIN_USER}" \
-        -p "${ADMIN_PASSWORD}" \
-        --sys-check-del \
+        --db_host="${DB_HOST}" \
+        --db_port="${DB_PORT}" \
+        --db_username="${DB_USER}" \
+        --db_password="${DB_PASSWORD}" \
+        --db_name="${DB_NAME}" \
+        --site_host="${SITE_URL}" \
+        --site_username="${ADMIN_USER}" \
+        --site_password="${ADMIN_PASSWORD}" \
         -n \
         && echo "installed" > "${INSTALL_FLAG}" \
         && echo "[INFO] Installation abgeschlossen." \
