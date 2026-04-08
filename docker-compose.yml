@@ -44,6 +44,14 @@ services:
       - suitecrm-net
     environment:
       TZ: Europe/Berlin
+      DB_HOST: suitecrm-db
+      DB_PORT: 3306
+      DB_NAME: ${MARIADB_DATABASE}
+      DB_USER: ${MARIADB_USER}
+      DB_PASSWORD: ${MARIADB_PASSWORD}
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SITE_URL: ${SITE_URL}
 
 networks:
   suitecrm-net:
