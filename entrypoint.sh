@@ -16,27 +16,20 @@ if [ ! -f "${SUITECRM_DIR}/bin/console" ]; then
     echo "[INFO] Kopieren abgeschlossen."
 fi
 
-# ── Berechtigungen (nur beim ersten Start) ──────────────────
-PERMISSIONS_FLAG="${SUITECRM_DIR}/.permissions_set"
-if [ ! -f "${PERMISSIONS_FLAG}" ]; then
-    echo "[INFO] Setze Berechtigungen..."
-    chown -R www-data:www-data "${SUITECRM_DIR}"
-    find "${SUITECRM_DIR}" -type d -exec chmod 755 {} \;
-    find "${SUITECRM_DIR}" -type f -exec chmod 644 {} \;
+# ── Temp-Dir (fuer sys_temp_dir in php.ini) ─────────────────
+mkdir -p "${SUITECRM_DIR}/tmp"
+chown www-data:www-data "${SUITECRM_DIR}/tmp"
+chmod 775 "${SUITECRM_DIR}/tmp"
 
-    for DIR in \
-        "cache" "custom" "modules" "themes" "data" "upload" "logs" \
-        "public/legacy/cache" "public/legacy/custom" "public/legacy/modules" \
-        "public/legacy/themes" "public/legacy/data" "public/legacy/upload" \
-        "public/legacy/logs"; do
-        [ -d "${SUITECRM_DIR}/${DIR}" ] && chmod -R 775 "${SUITECRM_DIR}/${DIR}"
-    done
-
-    echo "1" > "${PERMISSIONS_FLAG}"
-    echo "[INFO] Berechtigungen gesetzt."
-else
-    echo "[INFO] Berechtigungen bereits gesetzt, überspringe..."
-fi
+# ── Berechtigungen IMMER setzen (nicht nur beim ersten Start) ─
+# Installer/Updates schreiben als root, Cache-/Vardef-Dateien
+# muessen aber von www-data schreibbar sein. Daher bei jedem
+# Start neu durchziehen.
+echo "[INFO] Setze Berechtigungen..."
+chown -R www-data:www-data "${SUITECRM_DIR}"
+find "${SUITECRM_DIR}" -type d -exec chmod 775 {} \;
+find "${SUITECRM_DIR}" -type f -exec chmod 664 {} \;
+echo "[INFO] Berechtigungen gesetzt."
 
 # ── Automatische Installation (wenn Env-Vars gesetzt) ────────
 if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
@@ -54,7 +47,7 @@ if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] 
     echo "[INFO] Datenbank bereit."
 
     echo "[INFO] Starte automatische SuiteCRM Installation..."
-    php "${SUITECRM_DIR}/bin/console" suitecrm:app:install \
+    if php "${SUITECRM_DIR}/bin/console" suitecrm:app:install \
         --db_host="${DB_HOST}" \
         --db_port="${DB_PORT}" \
         --db_username="${DB_USER}" \
@@ -63,10 +56,30 @@ if [ ! -f "${INSTALL_FLAG}" ] && [ -n "${DB_USER}" ] && [ -n "${DB_PASSWORD}" ] 
         --site_host="${SITE_URL}" \
         --site_username="${ADMIN_USER}" \
         --site_password="${ADMIN_PASSWORD}" \
-        -n \
-        && echo "installed" > "${INSTALL_FLAG}" \
-        && echo "[INFO] Installation abgeschlossen." \
-        || echo "[WARN] Installation fehlgeschlagen – prüfe die Logs"
+        -n; then
+
+        echo "[INFO] Installation abgeschlossen."
+
+        # SuiteCRM-8-Installer legt bcrypt-Hash an, der Legacy-Login
+        # erwartet aber plain MD5. Daher das Passwort nachtraeglich
+        # direkt als MD5 in die DB schreiben.
+        echo "[INFO] Setze Admin-Passwort als MD5 (Legacy-kompatibel)..."
+        ADMIN_MD5=$(php -r "echo md5('${ADMIN_PASSWORD}');")
+        php -r "
+            \$pdo = new PDO('mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_NAME}', '${DB_USER}', '${DB_PASSWORD}');
+            \$stmt = \$pdo->prepare('UPDATE users SET user_hash = ? WHERE user_name = ?');
+            \$stmt->execute(['${ADMIN_MD5}', '${ADMIN_USER}']);
+        " && echo "[INFO] Admin-Passwort gesetzt."
+
+        # Permissions nach Install nochmal setzen (Installer schreibt als root)
+        chown -R www-data:www-data "${SUITECRM_DIR}"
+        find "${SUITECRM_DIR}" -type d -exec chmod 775 {} \;
+        find "${SUITECRM_DIR}" -type f -exec chmod 664 {} \;
+
+        echo "installed" > "${INSTALL_FLAG}"
+    else
+        echo "[WARN] Installation fehlgeschlagen – prüfe die Logs"
+    fi
 
 elif [ -f "${INSTALL_FLAG}" ]; then
     echo "[INFO] SuiteCRM bereits installiert, überspringe Installation."
@@ -92,7 +105,7 @@ chmod 0644 /etc/cron.d/suitecrm
 cron
 
 echo "[INFO] ============================================="
-echo "[INFO] Bereit! Öffne ${SITE_URL}"
+echo "[INFO] Bereit! Öffne ${SITE_URL:-http://localhost}"
 echo "[INFO] ============================================="
 
 exec "$@"
