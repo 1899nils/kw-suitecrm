@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Remove-Item -Path ''kw-suitecrm'' -Recurse -Force\")",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ghcr.io)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://ghcr.io/v2/1899nils/kw-suitecrm/tags/list\")",
+      "Bash(curl -s -I \"https://ghcr.io/v2/1899nils/kw-suitecrm/tags/list\")",
+      "Bash(curl -s \"https://github.com/1899nils/kw-suitecrm/pkgs/container/kw-suitecrm\" -o /dev/null -w \"HTTP_STATUS:%{http_code}\\\\nREDIRECT_URL:%{redirect_url}\\\\n\")",
+      "Bash(curl -s \"https://ghcr.io/v2/1899nils/kw-suitecrm/tags/list\")",
+      "Bash(git reset:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(git pull:*)",
+      "Bash(git commit -m 'fix: dauerhafte Fixes für Neuinstall/Update \\(Unraid\\):*)",
+      "Bash(zcat /mnt/user/appdata/suitecrm/backup/suitecrm.sql.gz)",
+      "Bash(git checkout:*)",
+      "Bash(git commit -m 'feat: Suite 7 Legacy Image für Backup-Migration:*)"
+    ]
+  }
+}

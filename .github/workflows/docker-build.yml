@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - suite7
     paths:
       # Nur neu bauen wenn sich relevante Dateien ändern
       - 'Dockerfile'
@@ -57,9 +58,12 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # :latest immer beim Push auf main
-            type=raw,value=latest
-            # :8.7.1 (die SuiteCRM-Version als Tag)
+            # :latest nur beim Push auf main (Suite 8)
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            # :7 / :8 als Major-Tag je nach Branch
+            type=raw,value=7,enable=${{ github.ref == 'refs/heads/suite7' }}
+            type=raw,value=8,enable=${{ github.ref == 'refs/heads/main' }}
+            # :7.14.6 bzw. :8.7.1 (die SuiteCRM-Version als Tag)
             type=raw,value=${{ steps.version.outputs.suitecrm_version }}
             # :sha-abc1234 (Git Commit Hash, für Rollbacks)
             type=sha,prefix=sha-,format=short

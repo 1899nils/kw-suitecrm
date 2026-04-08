@@ -1,35 +1,22 @@
 # ============================================================
-# SuiteCRM Docker Image
-# Repo: https://github.com/1899nils/kw-suitecrm
+# SuiteCRM 7 Docker Image (Legacy / Migration)
+# Repo: https://github.com/1899nils/kw-suitecrm (branch: suite7)
 # ============================================================
-# Um die Version zu aktualisieren, nur SUITECRM_VERSION ändern
-# und einen neuen Commit pushen – GitHub Actions baut automatisch.
+# Dieses Image basiert auf SuiteCRM 7.14.x und dient dazu, ein
+# altes SuiteCRM-7-Backup wieder aufzunehmen. Spaeter kann von
+# hier auf SuiteCRM 8 upgegradet werden.
 # ============================================================
 
-ARG SUITECRM_VERSION=8.7.1
+ARG SUITECRM_VERSION=7.14.6
 
-FROM php:8.2-apache
+FROM php:8.0-apache
 
 ARG SUITECRM_VERSION
 ENV SUITECRM_VERSION=${SUITECRM_VERSION}
 ENV TZ=Europe/Berlin
 
-# Datenbank (werden beim Container-Start gesetzt)
-ENV DB_HOST=suitecrm-db
-ENV DB_PORT=3306
-ENV DB_NAME=suitecrm
-ENV DB_USER=
-ENV DB_PASSWORD=
-
-# Admin-Account
-ENV ADMIN_USER=admin
-ENV ADMIN_PASSWORD=
-
-# SuiteCRM URL (z.B. http://192.168.1.100:8080)
-ENV SITE_URL=http://localhost
-
 LABEL org.opencontainers.image.source="https://github.com/1899nils/kw-suitecrm"
-LABEL org.opencontainers.image.description="SuiteCRM ${SUITECRM_VERSION} auf PHP 8.2 Apache"
+LABEL org.opencontainers.image.description="SuiteCRM ${SUITECRM_VERSION} (Legacy 7.x) auf PHP 8.0 Apache"
 LABEL org.opencontainers.image.licenses="AGPL-3.0"
 
 # Zeitzone
@@ -56,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# PHP Extensions
+# PHP Extensions (Suite 7 braucht dieselben wie Suite 8)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo_mysql \
@@ -87,20 +74,20 @@ COPY conf/apache/security.conf   /etc/apache2/conf-available/suitecrm-security.c
 RUN a2enconf suitecrm-security
 COPY conf/php/suitecrm.ini       /usr/local/etc/php/conf.d/suitecrm.ini
 
-# SuiteCRM herunterladen – in /opt/suitecrm-source (nicht im Volume!)
+# SuiteCRM 7 herunterladen – Baseline in /opt/suitecrm-source
 RUN curl -fsSL \
-    "https://github.com/salesagility/SuiteCRM-Core/releases/download/v${SUITECRM_VERSION}/SuiteCRM-${SUITECRM_VERSION}.zip" \
+    "https://github.com/salesagility/SuiteCRM/releases/download/v${SUITECRM_VERSION}/SuiteCRM-${SUITECRM_VERSION}.zip" \
     -o /tmp/suitecrm.zip \
     && unzip -q /tmp/suitecrm.zip -d /tmp/suitecrm_extract \
     && mkdir -p /opt/suitecrm-source \
-    && if [ -f "/tmp/suitecrm_extract/bin/console" ]; then \
+    && if [ -f "/tmp/suitecrm_extract/install.php" ]; then \
          cp -r /tmp/suitecrm_extract/. /opt/suitecrm-source/; \
        else \
-         SUBDIR=$(find /tmp/suitecrm_extract -maxdepth 2 -name "console" -path "*/bin/console" | head -1 | sed 's|/bin/console||'); \
+         SUBDIR=$(find /tmp/suitecrm_extract -maxdepth 2 -name "install.php" | head -1 | sed 's|/install.php||'); \
          cp -r "${SUBDIR}/." /opt/suitecrm-source/; \
        fi \
     && rm -rf /tmp/suitecrm.zip /tmp/suitecrm_extract \
-    && test -f /opt/suitecrm-source/bin/console || (echo "ERROR: bin/console nicht gefunden!" && exit 1)
+    && test -f /opt/suitecrm-source/install.php || (echo "ERROR: install.php nicht gefunden!" && exit 1)
 
 # Entrypoint
 COPY entrypoint.sh /entrypoint.sh
